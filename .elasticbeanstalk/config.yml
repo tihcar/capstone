@@ -1,9 +1,13 @@
 branch-defaults:
   master:
-    environment: tweapp
+    environment: tweetsenti-env
     group_suffix: null
+environment-defaults:
+  tweetsenti-env:
+    branch: null
+    repository: null
 global:
-  application_name: tweetapp1
+  application_name: tweetsenti
   branch: null
   default_ec2_keyname: null
   default_platform: python3.6
