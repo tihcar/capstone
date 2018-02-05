@@ -23,7 +23,7 @@ class tweets_senti():
     
         oauth = OAuth(ACCESS_TOKEN, ACCESS_SECRET, consumer_key, consumer_secret)
         twitter = Twitter(auth=oauth)
-        #q = '#Bitcoin'
+        #q = 'modi'
         count = 100
         
         search_results = twitter.search.tweets(q=q,count = count)
@@ -32,24 +32,23 @@ class tweets_senti():
         min_id = min(Original_status_df['id'])
         max_id = max(Original_status_df['id'])
         # Original_status_df.to_csv("E:/MIT/Fall2k17/Capstone/tweets.csv")
+        while len(Original_status_df) < 300:
+        #while min_id is not None:
+             #print(min_id)
+             try:
+                 search_results = twitter.search.tweets(q=q,count=count,max_id = min_id)
+                 results = json_normalize(search_results,['statuses'])
+                 Original_status_df = Original_status_df.append(results)
+                 min_id = min(results['id'])
+                 max_id = max(results['id'])
+                 #print(Original_status_df.shape)
+             except TwitterHTTPError:
+                 break
         
-#==============================================================================
-#         while min_id is not None:
-#              print(min_id)
-#              try:
-#                  search_results = twitter.search.tweets(q=q,count=count,max_id = min_id)
-#                  results = json_normalize(search_results,['statuses'])
-#                  Original_status_df = Original_status_df.append(results)
-#                  min_id = min(results['id'])
-#                  max_id = max(results['id'])
-#                  print(Original_status_df.shape)
-#              except TwitterHTTPError:
-#                  break
-#==============================================================================
-
+        Original_status_df = Original_status_df.reset_index()
         tweet_df = cleanTweets(Original_status_df)
         tweet_df_live_sentiments = cal_sentiment(tweet_df)
-        basic_scatter_string,scatter_ids = plot_sentiments(tweet_df_live_sentiments['Polarity'],tweet_df_live_sentiments['Subjectivity'])
+        basic_scatter_string,scatter_ids = plot_sentiments(tweet_df_live_sentiments['Polarity'],tweet_df_live_sentiments['Subjectivity'],tweet_df_live_sentiments['Reputation'])
         
         bar_df = tweet_df_live_sentiments[['Polarity','Subjectivity','created_at']]
         times =pd.to_datetime(bar_df['created_at'])
@@ -60,8 +59,13 @@ class tweets_senti():
         #basic_bar_string = bar_sentiments(bar_df_sentiments['Polarity'],bar_df_sentiments['Subjectivity'],bar_df_sentiments.index)
         basic_bar_string, bar_ids = bar_sentiments(bar_df['Polarity'],bar_df['Subjectivity'],bar_df.index)
         #basic_bar_string =  = bar_sentiments()
-        basic_map_string, map_ids = map_plot(tweet_df_live_sentiments['Polarity'],tweet_df_live_sentiments['US_State_of_tweet'])
-        return basic_scatter_string,scatter_ids, basic_bar_string,bar_ids,basic_map_string, map_ids  
+        map_df = tweet_df_live_sentiments[['Polarity','US_State_of_tweet']]
+        map_df = map_df.groupby('US_State_of_tweet').mean()
+        basic_map_string, map_ids = map_plot(map_df['Polarity'],map_df.index)
+        world_map_df = tweet_df_live_sentiments[['Polarity','Country_of_tweet']]
+        world_map_df = world_map_df.groupby('Country_of_tweet').mean()
+        world_map_string, world_map_ids = world_map(world_map_df['Polarity'], world_map_df.index)
+        return basic_scatter_string,scatter_ids,basic_bar_string,bar_ids,basic_map_string, map_ids,world_map_string, world_map_ids
         
     # read csv file from ussama     
 
@@ -206,14 +210,27 @@ def US_State_of_tweet(dataframe):
     dataframe['US_State_of_tweet'] = final_list
     return dataframe
 
+import pycountry as pyc
+world_dict = dict()
+world_dict['']=''
+world_dict['USA'] = 'USA'
+world_dict['Dubai'] = 'UAE'
+world_dict['Russia'] = 'RUS'
+for country in pyc.countries:
+    country_code = country.alpha_3
+    country_name = country.name
+    world_dict[country_name] = country_code
 def Updated_country_of_tweet(dataframe):
     countrylist = []
     for i in range(len(dataframe)):
-        if(dataframe.iloc[i,:]['US_State_of_tweet']!=""):
+        if(dataframe.iloc[i,:]['US_State_of_tweet']is not None):
             countrylist.append('USA')
         else:
-            countrylist.append(dataframe.iloc[i,:]['Country_of_tweet'])
-                
+            try:
+                country = dataframe.iloc[i,:]['Country_of_tweet']
+                countrylist.append(world_dict[country])
+            except KeyError:
+                countrylist.append('')
             
     dataframe['Country_of_tweet'] = countrylist
     return  dataframe
@@ -242,7 +259,7 @@ def cal_sentiment(tweet_df):
 
 
 
-def plot_sentiments(polarity,subjectivity):
+def plot_sentiments(polarity,subjectivity,reputation):
     #import plotly.offline as offline
     import plotly
     import json
@@ -259,6 +276,9 @@ def plot_sentiments(polarity,subjectivity):
 #==============================================================================
     #obj = py.iplot(data, filename='basic-scatter')
     #basic_scatter_string = obj.embed_code
+    text_string = []
+    for i in reputation:
+        text_string.append('Reputation:'+str(i))
     graphs = [
         dict(
             data=[
@@ -266,11 +286,18 @@ def plot_sentiments(polarity,subjectivity):
                     x=polarity,
                     y=subjectivity,
                     type='scatter',
-                    mode = 'markers'
+                    mode = 'markers',
+                    text = text_string,
+                    marker=dict(
+                        size='16',
+                        color = reputation, #set color equal to a variable
+                        colorscale='Viridis',
+                        showscale=True
+                    )
                 ),
             ],
             layout=dict(
-                title='Scatter'
+                title='Scatter Plot: Polarity vs Subjectivity'
             )
         )]
     scatter_id = ['Scatter']
@@ -317,8 +344,10 @@ def bar_sentiments(polarity,subjectivity,dates):
                 ),
             ],
             layout=dict(
-                title='Bar',
-                barmode='group'
+                title='Bar Plot',
+                barmode='group',
+                bargap=0.15,
+                bargroupgap=0.1
             )
         )]
     bar_id = ['Bar']
@@ -387,3 +416,48 @@ def map_plot(polarity,us_state_code):
     map_id = ['Map']
     basic_map_json = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
     return basic_map_json, map_id
+
+def world_map(polarity,country_code):
+    import plotly
+    import json
+#==============================================================================
+#     scl = [[0.0, 'rgb(242,240,247)'],[0.2, 'rgb(218,218,235)'],[0.4, 'rgb(188,189,220)'],\
+#             [0.6, 'rgb(158,154,200)'],[0.8, 'rgb(117,107,177)'],[1.0, 'rgb(84,39,143)']]
+#==============================================================================
+    graphs = [
+        dict(
+            data = [ 
+                    dict(
+                        type = 'choropleth',
+                        locations = country_code,
+                        z = polarity,
+                        text = country_code,
+                        colorscale = [[-1,"rgb(5, 10, 172)"],[-0.5,"rgb(40, 60, 190)"],[0.0,"rgb(70, 100, 245)"],\
+                            [0.3,"rgb(90, 120, 245)"],[0.7,"rgb(106, 137, 247)"],[1,"rgb(220, 220, 220)"]],
+                        autocolorscale = False,
+                        reversescale = True,
+                        marker = dict(
+                            line = dict (
+                                color = 'rgb(180,180,180)',
+                                width = 0.5
+                            ) ),
+                        colorbar = dict(
+                            autotick = False,
+                            title = 'Polarity'),
+                      )
+                    ],
+            layout = dict(
+            title = 'World Map Plot',
+            geo = dict(
+                showframe = False,
+                showcoastlines = True,
+                projection = dict(
+                    type = 'Mercator'
+                )
+                )   
+            )
+        )
+    ]
+    world_map_id = ['World_Map']
+    world_map_json = json.dumps(graphs, cls=plotly.utils.PlotlyJSONEncoder)
+    return world_map_json, world_map_id

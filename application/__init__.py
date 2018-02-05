@@ -7,7 +7,7 @@ Created on Mon Nov 13 20:36:45 2017
 
 from flask import Flask
 
-app = Flask(__name__)
-app.config.from_object('config')
+application = Flask(__name__)
+application.config.from_object('config')
 
-from app import views
+from application import views

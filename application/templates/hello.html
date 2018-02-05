@@ -118,6 +118,7 @@ document.getElementById("defaultOpen").click();
   	  <button class="tablinks" onclick="openPlot(event, 'Scatter')" id = "defaultOpen">Scatter</button>
 	  <button class="tablinks" onclick="openPlot(event, 'Bar')">Bar</button>
 	  <button class="tablinks" onclick="openPlot(event, 'Map')">Map</button>
+	  <button class="tablinks" onclick="openPlot(event, 'World Map')">World Map</button>
 </div>
 </header>
 
@@ -136,6 +137,11 @@ document.getElementById("defaultOpen").click();
   <div id="Map_plot">
   </div>
 </div>
+<div id="World Map" class="tabcontent">
+  <h3>World Map Plot</h3>
+  <div id="World_Map_plot">
+  </div>
+</div>
 <br>
 <br>
 {% with messages = get_flashed_messages(with_categories=true) %}
@@ -152,8 +158,17 @@ document.getElementById("defaultOpen").click();
  
             <div class="text">
                 {{ form.name.label }} {{ form.name }}
-            </div>
-			<br>
+            
+			
+            
+            Number of Tweets:
+            
+            <select>
+  <option value="100">100</option>
+  <option value="300">300</option>
+  <option value="500">500</option>
+  <option value="1000">1000</option>
+</select></div><br>
             <div class="input submit">
                 <input type="submit" value="Query" class="submitButton"/>
             </div>
@@ -162,7 +177,9 @@ document.getElementById("defaultOpen").click();
 		<br>
 		<br>
 		<footer>
-Copyright &copy; Nitish Sharma & Rachit Pabreja
+Developed by Nitesh Sharma & Rachit Pabreja
+<br>
+Contributors: Dr. Vijay Atluri & Ussama Yakub
     <!-- D3.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.6/d3.min.js"></script>
     <!-- jQuery -->
@@ -177,6 +194,8 @@ Copyright &copy; Nitish Sharma & Rachit Pabreja
 		var bar_ids = {{bar_ids | safe}};
 		var map_graphs = {{mapPlot | safe}}
 		var map_ids = {{map_ids | safe}}
+		var world_graphs = {{worldPlot | safe}}
+		var world_map_ids = {{world_map_ids | safe}}
         for(var i in scatter_graphs) {
             Plotly.plot(scatter_ids[i]+'_plot', // the ID of the div, created above
                         scatter_graphs[i].data,
@@ -191,6 +210,11 @@ Copyright &copy; Nitish Sharma & Rachit Pabreja
             Plotly.plot(map_ids[i]+'_plot', // the ID of the div, created above
                         map_graphs[i].data,
                         map_graphs[i].layout || {});
+        }
+		for(var i in map_graphs) {
+            Plotly.plot(world_map_ids[i]+'_plot', // the ID of the div, created above
+                        world_graphs[i].data,
+                        world_graphs[i].layout || {});
         }
     </script>
 </footer>
